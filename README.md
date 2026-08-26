@@ -22,8 +22,8 @@ contraseña, y ve únicamente lo suyo.
 - **Alta en el mínimo de pasos.** La categoría viene sugerida según la hora; la nota y la fecha
   arrancan plegadas; el botón de guardar queda fijo en la zona del pulgar.
 - **Edición y borrado** de cualquier registro ya cargado.
-- **Foto desde la cámara**, comprimida en el navegador antes de subir para que no tarde con mala
-  conexión.
+- **Foto desde la cámara o desde la galería**, comprimida en el navegador antes de subir para que
+  no tarde con mala conexión.
 - **Export a PDF** de un rango de fechas, agrupado por día, con las fotos embebidas y a nombre de
   la persona.
 - **Se instala como app.** Es una PWA: desde el teléfono se agrega a la pantalla de inicio y abre

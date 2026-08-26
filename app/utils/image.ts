@@ -3,7 +3,8 @@
  *
  * Por que a mano y no una libreria: son 40 lineas de canvas. Lo unico no obvio es
  * `imageOrientation: 'from-image'`, que aplica el EXIF de rotacion del iPhone al
- * bitmap; sin eso las fotos verticales se suben acostadas.
+ * bitmap; sin eso las fotos verticales se suben acostadas. Importa igual para las
+ * fotos de la galeria: el EXIF viene del momento en que se sacaron.
  *
  * Una foto de iPhone son 3-5 MB. Esto la deja en ~150-300 KB, que con 4G lento
  * es la diferencia entre subir en 1 segundo o en 20.
@@ -52,11 +53,11 @@ export async function compressImage(
     // Subimos el original si el bucket lo acepta.
     if (!ALLOWED.includes(file.type)) {
       throw new Error(
-        'No pudimos procesar esa foto. Saca la foto con la camara desde la app, o pasala a JPG.',
+        'No pudimos procesar esa foto. Probá sacarla con la cámara desde la app, o pasala a JPG.',
       )
     }
     if (file.size > 8 * 1024 * 1024) {
-      throw new Error('La foto pesa mas de 8 MB y no se pudo comprimir.')
+      throw new Error('La foto pesa más de 8 MB y no se pudo comprimir.')
     }
     return { blob: file, contentType: file.type, width: 0, height: 0 }
   }
