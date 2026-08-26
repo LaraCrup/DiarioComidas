@@ -1,8 +1,15 @@
 # Diario de comidas
 
-Registro descriptivo de comidas. Nuxt 4 + Supabase (Auth, Postgres con RLS, Storage privado).
-Multiusuario desde el modelo de datos: cada fila y cada foto pertenecen a un usuario y la base
-es la que lo hace cumplir, no el frontend.
+Registro descriptivo de comidas para llevarle a tu nutricionista. Nuxt 4 + Supabase (Auth,
+Postgres con RLS, Storage privado).
+
+**El registro es abierto**: cualquiera con el link se hace su cuenta. El aislamiento entre
+usuarios lo hace cumplir la base, no el frontend — cada fila y cada foto pertenecen a un
+usuario, y las policies de RLS y del bucket están escritas de manera que un usuario logueado
+no pueda leer ni la fila ni la foto de otro ni manipulando la request a mano. Hay un script
+que lo prueba: [paso 8](#8-verificar-que-el-aislamiento-funciona).
+
+Sin calorías, macros, puntajes ni comidas buenas o malas. Es un diario, no una app de dieta.
 
 ---
 
@@ -16,7 +23,8 @@ Nuxt 4.4 pide **Node ≥ 22.18** (o ≥ 24.11). Con 22.14 anda igual pero tira u
 ### 1. Instalar
 
 ```bash
-cd diario-comidas
+git clone https://github.com/LaraCrup/DiarioComidas.git
+cd DiarioComidas
 npm install --legacy-peer-deps
 ```
 
@@ -29,13 +37,9 @@ npm install --legacy-peer-deps
 [supabase.com/dashboard](https://supabase.com/dashboard) → **New project**. Anotá la contraseña
 de la base; no la vas a necesitar para la app, pero sí si algún día entrás por psql.
 
-### 3. Correr la migración — ✅ ya está hecho
+### 3. Correr la migración
 
-Ya corrió sobre el proyecto de Supabase. Quedaron las
-4 policies de `meals`, las 4 del bucket, el índice, el trigger y el bucket privado; los
-advisors de seguridad y performance de Supabase dan cero avisos.
-
-Si algún día lo levantás de nuevo desde cero: Dashboard → **SQL Editor** → **New query** → pegá entero
+Dashboard → **SQL Editor** → **New query** → pegá entero
 [`supabase/migrations/20260826120000_init.sql`](supabase/migrations/20260826120000_init.sql) → **Run**.
 
 Crea la tabla `meals`, el enum de categorías, el índice, el trigger de `updated_at`, las 4
@@ -54,23 +58,42 @@ select id, public from storage.buckets where id = 'meal-photos';
 -- public tiene que ser false.
 ```
 
-### 4. Configurar Auth — ⚠️ esto sí lo tenés que hacer vos
+### 4. Configurar Auth — ⚠️ esto lo tenés que hacer a mano
 
-No se puede tocar por API, es la única cosa que queda pendiente.
-
-Dashboard → **Authentication**:
+No se puede tocar por API. Dashboard → **Authentication**:
 
 | Dónde | Qué | Por qué |
 |---|---|---|
-| **Sign In / Providers → Email** | **Confirm email: OFF** | Con esto en ON (el default), te registrás y no podés entrar hasta clickear el mail. Si vas a usar la app hoy, apagalo. |
-| **URL Configuration → Site URL** | `http://localhost:3000` mientras desarrollás, tu dominio cuando deployes | Es la base de los links que manda Supabase por mail. |
-| **URL Configuration → Redirect URLs** | `http://localhost:3000/**` y `https://TU-DOMINIO/**` | Sin esto, el link de "olvidé mi contraseña" rebota. |
-| **Sign In / Providers → Email → Allow new users to sign up** | Apagalo **después** de crear tus cuentas | Es una app personal. Con el registro abierto, cualquiera con la URL se hace una cuenta. |
+| **Sign In / Providers → Email → Allow new users to sign up** | **ON** | El registro es abierto: cualquiera con la URL se hace su cuenta y ve solo lo suyo. |
+| **Sign In / Providers → Email → Confirm email** | **ON** | Con registro abierto tiene que estar prendido: si no, alguien se anota con un mail que no es suyo, y el día que se olvide la contraseña el link de recuperación le llega a otra persona. Requiere SMTP propio, ver abajo. |
+| **URL Configuration → Site URL** | tu dominio (o `http://localhost:3000` mientras desarrollás) | Es la base de los links que salen por mail. |
+| **URL Configuration → Redirect URLs** | `https://TU-DOMINIO/**` y `http://localhost:3000/**` | Sin esto, el link de "olvidé mi contraseña" rebota. |
 
-### 5. Variables de entorno — ✅ ya está hecho
+#### SMTP: obligatorio si el registro es abierto
 
-El `.env` ya está escrito con la URL y la publishable key del proyecto. Si necesitás rehacerlo,
-`cp .env.example .env` y completá con Dashboard → **Project Settings**:
+El SMTP que trae Supabase manda **2 mails por hora** y solo a direcciones del equipo del
+proyecto. Con registro abierto eso significa que la tercera persona que se anote en una hora
+no recibe nada y queda con la cuenta trabada.
+
+Authentication → **Emails → SMTP Settings** → *Enable custom SMTP*. Cualquiera sirve;
+[Resend](https://resend.com) da 3.000 mails por mes gratis y se configura en cinco minutos:
+
+```
+Host: smtp.resend.com     Port: 587
+User: resend              Pass: <tu API key>
+Sender: algo@tu-dominio-verificado
+```
+
+Mientras probás solo vos, podés dejar **Confirm email en OFF** y saltarte esto. Pero antes de
+pasarle el link a alguien más, prendelo.
+
+### 5. Variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+Completá con Dashboard → **Project Settings**:
 
 | Variable | Dónde sale |
 |---|---|
@@ -88,9 +111,12 @@ npm run dev     # http://localhost:3000
 
 ### 7. Crear el primer usuario
 
-La base está vacía: cero usuarios, cero comidas, cero fotos. Andá a
-`http://localhost:3000/registro`, poné tu mail y una contraseña de 8+ caracteres. Con
-"Confirm email" apagado (paso 4) entrás derecho al diario.
+La base arranca vacía. Andá a `/registro`, poné tu mail y una contraseña de 8+ caracteres.
+Con "Confirm email" apagado entrás derecho; con confirmación prendida, primero clickeás el
+link que te llega por mail.
+
+Cada persona que se registre queda completamente aislada del resto: ve sus comidas, sus fotos
+y su PDF, y nada más. Eso es lo que prueba el paso 8.
 
 (Alternativa desde el dashboard: **Authentication → Users → Add user → Create new user**, con
 *Auto Confirm User* tildado.)
@@ -103,8 +129,7 @@ Creá una **segunda** cuenta de prueba (`test@loquesea.com`) y corré:
 ./scripts/verificar-aislamiento.sh tu@mail.com TU_PASS test@loquesea.com PASS_TEST
 ```
 
-Ya corrió contra este proyecto: **11 OK, 0 fallas**. El script no usa la app: pega directo
-contra la API de Supabase con el token de cada usuario,
+El script no usa la app: pega directo contra la API de Supabase con el token de cada usuario,
 que es exactamente lo que haría alguien manipulando los requests a mano. Chequea que A no pueda
 leer, insertar a nombre de, editar ni borrar filas de B; que no pueda apuntar una fila suya a
 una foto de B; que no pueda subir a la carpeta de B ni firmar una URL de una foto de B; y que
@@ -122,6 +147,17 @@ begin;
     values ('UUID_DE_B', 'cena', 'robada');                   -- ERROR: violates RLS policy
 rollback;
 ```
+
+### 9. Límites del plan free que te van a alcanzar primero
+
+| Recurso | Free | Se traduce en |
+|---|---|---|
+| Storage | 1 GB | ~5.000 fotos (salen ~200 KB cada una después de comprimir) |
+| Egress | 5 GB/mes | cada export de dos semanas con fotos son ~5 MB |
+| Base de datos | 500 MB | las filas son texto, no te va a molestar |
+| Proyecto pausado | a los 7 días sin actividad | si nadie entra una semana, hay que despausarlo a mano |
+
+Si el registro es abierto, el que se agota primero es Storage.
 
 ---
 
