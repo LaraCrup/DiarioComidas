@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { deviceTimeZone, endOfLocalDay, startOfLocalDay, todayKey } from '#shared/utils/dates'
 
-// Default: las dos semanas del tratamiento.
+// Default: las últimas dos semanas.
 const from = ref(todayKey(-13))
 const to = ref(todayKey())
 
