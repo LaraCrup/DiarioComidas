@@ -7,7 +7,7 @@
 // signature implicita a los type alias, no a las interfaces. Con `interface` el
 // cliente degrada a `never` y todos los .insert() dejan de tipar.
 
-export type MealCategory = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'snack'
+export type MealCategory = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'snack' | 'otros'
 
 export type MealRow = {
   id: string

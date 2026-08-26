@@ -1,6 +1,8 @@
 <script setup lang="ts">
 defineProps<{
   title: string
+  /** Linea chica debajo del titulo. En el home va el nombre de la persona. */
+  subtitle?: string
   /** Ruta del boton "atras". Si no viene, no se muestra. */
   back?: string
 }>()
@@ -22,7 +24,15 @@ defineProps<{
     </NuxtLink>
     <div v-else class="w-2" />
 
-    <h1 class="min-w-0 flex-1 truncate text-lg font-bold text-slate-900">{{ title }}</h1>
+    <div class="min-w-0 flex-1">
+      <h1
+        class="truncate font-bold text-slate-900"
+        :class="subtitle ? 'text-base leading-tight' : 'text-lg'"
+      >
+        {{ title }}
+      </h1>
+      <p v-if="subtitle" class="truncate text-xs leading-tight text-slate-500">{{ subtitle }}</p>
+    </div>
 
     <slot name="actions" />
   </header>

@@ -3,6 +3,7 @@ import { dayKey, friendlyDayLabel, todayKey } from '#shared/utils/dates'
 import type { Meal } from '#shared/types/database'
 
 const { list, signedUrls } = useMeals()
+const { displayName, firstName } = useProfile()
 const supabase = useSupabaseClient()
 
 const meals = ref<Meal[]>([])
@@ -56,7 +57,7 @@ async function logout() {
 
 <template>
   <div class="flex min-h-dvh flex-col">
-    <AppHeader title="Diario">
+    <AppHeader title="Diario" :subtitle="displayName">
       <template #actions>
         <NuxtLink
           to="/exportar"
@@ -96,7 +97,9 @@ async function logout() {
 
       <!-- Vacio -->
       <div v-else-if="!meals.length" class="card mt-8 p-8 text-center">
-        <p class="text-base font-semibold text-slate-800">Todavía no cargaste nada</p>
+        <p class="text-base font-semibold text-slate-800">
+          {{ firstName ? `${firstName}, todavía no cargaste nada` : 'Todavía no cargaste nada' }}
+        </p>
         <p class="mt-1 text-sm text-slate-500">
           Anotá lo que comés apenas terminás. Tarda menos de 30 segundos.
         </p>

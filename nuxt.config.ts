@@ -49,9 +49,27 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         // viewport-fit=cover para poder usar env(safe-area-inset-*) en iPhone
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        // slate-900, el mismo del boton primario: la barra del browser sigue al header.
         { name: 'theme-color', content: '#0f172a' },
-        { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'robots', content: 'noindex, nofollow' },
+
+        // --- PWA -------------------------------------------------------
+        // El estandar es mobile-web-app-capable; el prefijo apple sigue
+        // haciendo falta para iOS, que no lee el otro.
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        // Como se llama el icono en la pantalla de inicio del iPhone.
+        { name: 'apple-mobile-web-app-title', content: 'Diario' },
+        // `default` = barra de estado blanca con texto negro, igual que el
+        // header. Con `black-translucent` el contenido se le mete abajo.
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+      ],
+      link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+        // iOS ignora los iconos del manifest: usa este y nada mas.
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
       ],
     },
   },

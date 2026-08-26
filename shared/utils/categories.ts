@@ -6,6 +6,7 @@ export const CATEGORIES: readonly MealCategory[] = [
   'merienda',
   'cena',
   'snack',
+  'otros',
 ] as const
 
 export const CATEGORY_LABEL: Record<MealCategory, string> = {
@@ -14,6 +15,7 @@ export const CATEGORY_LABEL: Record<MealCategory, string> = {
   merienda: 'Merienda',
   cena: 'Cena',
   snack: 'Snack',
+  otros: 'Otros',
 }
 
 export function isCategory(value: unknown): value is MealCategory {
@@ -24,6 +26,10 @@ export function isCategory(value: unknown): value is MealCategory {
  * Categoria sugerida segun la hora. Es solo un default: la pantalla de alta
  * la muestra ya seleccionada y se cambia con un toque.
  * Franja horaria pensada para Argentina (se cena tarde).
+ *
+ * `otros` nunca se sugiere: es la salida para lo que no entra en ninguna franja
+ * (un picoteo largo, una comida de viaje con horario corrido), y eso lo decide
+ * la persona, no el reloj.
  */
 export function suggestCategory(date: Date = new Date()): MealCategory {
   const h = date.getHours()

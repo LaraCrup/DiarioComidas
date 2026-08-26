@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { deviceTimeZone, endOfLocalDay, startOfLocalDay, todayKey } from '#shared/utils/dates'
 
+const { displayName } = useProfile()
+
 // Default: las últimas dos semanas.
 const from = ref(todayKey(-13))
 const to = ref(todayKey())
@@ -64,6 +66,10 @@ function preset(days: number) {
       <p class="text-sm text-slate-600">
         Un PDF con tus registros agrupados por día, con las fotos incluidas. Se arma en el
         servidor, así que podés mandarlo por mail o imprimirlo tal cual.
+      </p>
+
+      <p v-if="displayName" class="text-sm text-slate-500">
+        Sale a nombre de <strong class="font-semibold text-slate-700">{{ displayName }}</strong>.
       </p>
 
       <div class="flex gap-2">

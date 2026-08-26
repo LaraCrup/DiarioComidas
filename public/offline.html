@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Sin conexión · Diario de comidas</title>
+    <!--
+      Se sirve desde el service worker cuando no hay red, así que no puede
+      depender de nada externo: los estilos van acá adentro y los colores
+      repetidos a mano (son los mismos slate de la app).
+    -->
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        background: #f1f5f9;
+        color: #0f172a;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+          Arial, sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+      svg {
+        width: 3rem;
+        height: 3rem;
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+      p {
+        margin: 0;
+        max-width: 22rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: #475569;
+      }
+      button {
+        margin-top: 1.5rem;
+        min-height: 3rem;
+        padding: 0 1.25rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: #0f172a;
+        color: #fff;
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 600;
+        touch-action: manipulation;
+      }
+    </style>
+  </head>
+  <body>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path
+        d="M1 1l22 22M16.7 16.7A10.9 10.9 0 0 1 12 18M5 12.6a10.9 10.9 0 0 1 4-2.4M10.7 5.1A16 16 0 0 1 22 9M2 9a16 16 0 0 1 3.3-2.4M12 21h.01"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+    <h1>Sin conexión</h1>
+    <p>
+      El diario guarda todo en el servidor, así que necesita internet para abrirse. Lo que ya
+      cargaste está a salvo.
+    </p>
+    <button type="button" onclick="location.reload()">Reintentar</button>
+  </body>
+</html>

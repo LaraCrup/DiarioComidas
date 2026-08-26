@@ -4,6 +4,7 @@ import { pool } from '../utils/pool'
 import { MEAL_COLUMNS, PHOTO_BUCKET } from '#shared/types/database'
 import type { Database, Meal } from '#shared/types/database'
 import { dayKey } from '#shared/utils/dates'
+import { displayName } from '#shared/utils/profile'
 
 const MAX_ROWS = 500
 const MAX_SPAN_DAYS = 400
@@ -108,7 +109,9 @@ export default defineEventHandler(async (event) => {
     timeZone,
     fromKey,
     toKey,
-    ownerLabel: user.email ?? 'Mi diario',
+    // El PDF se manda al medico o se imprime: va a nombre de la persona, no
+    // de su email. Las cuentas viejas, sin nombre cargado, caen al email.
+    ownerLabel: displayName(user, 'Mi diario'),
   })
 
   setHeader(event, 'content-type', 'application/pdf')
