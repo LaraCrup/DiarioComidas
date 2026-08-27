@@ -52,7 +52,8 @@ Lo hace cumplir la base de datos, no el frontend.
 
 `scripts/verificar-aislamiento.sh` prueba todo eso contra la API real, sin pasar por la app, que
 es lo que haría alguien manipulando los requests a mano: que A no pueda leer, insertar a nombre
-de, editar ni borrar filas de B, ni subir a su carpeta, ni firmar una URL de sus fotos.
+de, editar ni borrar filas de B — ni en `meals` ni en `workouts` — ni subir a su carpeta, ni
+firmar una URL de sus fotos.
 
 ## Stack
 

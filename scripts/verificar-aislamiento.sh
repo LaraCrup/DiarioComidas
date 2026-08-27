@@ -26,6 +26,8 @@ pass=0; fail=0
 ok()  { printf '  \033[32mOK\033[0m   %s\n' "$1"; pass=$((pass+1)); }
 bad() { printf '  \033[31mFALLA\033[0m %s\n' "$1"; fail=$((fail+1)); }
 jget() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);const v=process.argv[1].split(".").reduce((a,k)=>a?.[k],j);console.log(v??"")}catch{console.log("")}})' "$1"; }
+# id de la primera fila de una respuesta de PostgREST
+jid() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s)[0].id)}catch{console.log("")}})'; }
 
 login() {
   curl -s -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
@@ -53,12 +55,20 @@ code() { echo "$1" | tail -n1; }
 echo
 echo "== Preparo un registro de cada uno =="
 R=$(rest POST meals "$TOKEN_A" '{"category":"cena","description":"[test] fila de A"}')
-ID_A=$(body "$R" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s)[0].id)}catch{console.log("")}})')
+ID_A=$(body "$R" | jid)
 R=$(rest POST meals "$TOKEN_B" '{"category":"cena","description":"[test] fila de B"}')
-ID_B=$(body "$R" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s)[0].id)}catch{console.log("")}})')
+ID_B=$(body "$R" | jid)
 [[ -n "$ID_A" && -n "$ID_B" ]] || { echo "No pude crear las filas de prueba. Respuesta: $R"; exit 1; }
-echo "  fila A = $ID_A"
-echo "  fila B = $ID_B"
+echo "  comida A = $ID_A"
+echo "  comida B = $ID_B"
+
+R=$(rest POST workouts "$TOKEN_A" '{"kind":"gimnasio","note":"[test] entreno de A"}')
+WID_A=$(body "$R" | jid)
+R=$(rest POST workouts "$TOKEN_B" '{"kind":"correr","note":"[test] entreno de B"}')
+WID_B=$(body "$R" | jid)
+[[ -n "$WID_A" && -n "$WID_B" ]] || { echo "No pude crear los entrenamientos de prueba. Respuesta: $R"; exit 1; }
+echo "  entreno A = $WID_A"
+echo "  entreno B = $WID_B"
 
 echo
 echo "== Tabla meals =="
@@ -88,6 +98,29 @@ if [[ "$(code "$R")" == "4"* ]]; then ok "A no puede apuntar una fila suya a una
 else bad "A guardo un photo_path de B (HTTP $(code "$R"))"; fi
 
 echo
+echo "== Tabla workouts =="
+
+R=$(rest GET "workouts?id=eq.$WID_B&select=id" "$TOKEN_A")
+[[ "$(body "$R")" == "[]" ]] && ok "A no puede LEER el entreno de B" || bad "A leyo el entreno de B -> $(body "$R")"
+
+R=$(rest GET "workouts?select=user_id" "$TOKEN_A")
+if body "$R" | grep -q "$UID_B"; then bad "el listado de entrenos de A trae filas de B"; else ok "el listado de entrenos de A solo trae filas de A"; fi
+
+R=$(rest POST workouts "$TOKEN_A" "{\"user_id\":\"$UID_B\",\"kind\":\"correr\",\"note\":\"[test] robado\"}")
+if [[ "$(code "$R")" == "4"* ]]; then ok "A no puede INSERTAR un entreno a nombre de B (HTTP $(code "$R"))"
+else bad "A inserto un entreno a nombre de B (HTTP $(code "$R")) -> $(body "$R")"; fi
+
+R=$(rest PATCH "workouts?id=eq.$WID_B" "$TOKEN_A" '{"note":"[test] pisado"}')
+[[ "$(body "$R")" == "[]" ]] && ok "A no puede EDITAR el entreno de B" || bad "A edito el entreno de B -> $(body "$R")"
+
+R=$(rest DELETE "workouts?id=eq.$WID_B" "$TOKEN_A")
+[[ "$(body "$R")" == "[]" ]] && ok "A no puede BORRAR el entreno de B" || bad "A borro el entreno de B -> $(body "$R")"
+
+R=$(rest PATCH "workouts?id=eq.$WID_A" "$TOKEN_A" "{\"user_id\":\"$UID_B\"}")
+OWNER=$(body "$R" | jget 0.user_id)
+[[ "$OWNER" != "$UID_B" ]] && ok "A no puede REGALARLE su entreno a B" || bad "A le cambio el dueño a su entreno"
+
+echo
 echo "== Bucket meal-photos =="
 TMP=$(mktemp -t fotoprueba)
 printf '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xd9' > "$TMP"
@@ -115,6 +148,9 @@ echo "== Limpieza =="
 rest DELETE "meals?id=eq.$ID_A" "$TOKEN_A" >/dev/null
 rest DELETE "meals?id=eq.$ID_B" "$TOKEN_B" >/dev/null
 rest DELETE "meals?description=like.[test]*" "$TOKEN_A" >/dev/null
+rest DELETE "workouts?id=eq.$WID_A" "$TOKEN_A" >/dev/null
+rest DELETE "workouts?id=eq.$WID_B" "$TOKEN_B" >/dev/null
+rest DELETE "workouts?note=like.[test]*" "$TOKEN_A" >/dev/null
 curl -s -o /dev/null -X DELETE "$SUPABASE_URL/storage/v1/object/meal-photos/$UID_A/propia.jpg" \
   -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $TOKEN_A"
 rm -f "$TMP"
