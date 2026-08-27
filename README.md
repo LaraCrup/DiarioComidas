@@ -68,10 +68,15 @@ la misma tabla obliga a que la mitad de las columnas sean nulas y a que cada con
 tipo. Separadas, cada una tiene sus propias constraints y el listado del día las mezcla en el
 cliente, que es donde ese orden hace falta.
 
-**El verde de los entrenamientos es el único color de la app además del rojo de error.** En el
-listado de un día hay que poder saltear los entrenamientos cuando estás leyendo lo que comiste,
-y al revés. Con una diferencia solo de forma (sin foto, con ícono) hay que frenarse a leer cada
-tarjeta; con el fondo verde se resuelve de un vistazo.
+**Los entrenamientos van en azul.** En el listado de un día hay que poder saltear los
+entrenamientos cuando estás leyendo lo que comiste, y al revés. Con una diferencia solo de forma
+(sin foto, con ícono) hay que frenarse a leer cada tarjeta; con el fondo de color se resuelve de
+un vistazo. Va en `blue-100` y no en `blue-50` como el resto de los fondos tenues de la app,
+porque el fondo de la pantalla ya es `slate-100` —un azul grisáceo— y contra eso un `blue-50` no
+se distingue.
+
+Con eso, todo el color de la app quiere decir algo: rojo es error o borrado, verde es "salió
+bien" y azul es entrenamiento. El resto es la escala `slate`.
 
 **El nombre y el apellido van en el `user_metadata` de Auth, no en una tabla propia.** Se piden
 en el alta, se escriben una sola vez y viajan en el JWT: los lee el browser y también el endpoint

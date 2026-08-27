@@ -8,16 +8,19 @@ defineProps<{ workout: Workout }>()
 
 <template>
   <!--
-    Verde y no gris: en el listado del dia hay que poder saltear los
+    Azul y no gris: en el listado del dia hay que poder saltear los
     entrenamientos de un vistazo cuando estas leyendo lo que comiste, y al reves.
-    Es el unico color de la app ademas del rojo de error.
+
+    Va en el escalon 100 y no en el 50 como el resto de los fondos tenues: el
+    fondo de la app ya es slate-100, que es un azul grisaceo, y contra eso un
+    blue-50 practicamente no se ve.
   -->
   <NuxtLink
     :to="`/entrenamiento/${workout.id}`"
-    class="card flex items-start gap-3 border-emerald-200 bg-emerald-50 p-3 active:bg-emerald-100"
+    class="card flex items-start gap-3 border-blue-300 bg-blue-100 p-3 active:bg-blue-200"
   >
     <div
-      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"
+      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-200 text-blue-800"
     >
       <WorkoutIcon :kind="workout.kind" class="h-5 w-5" />
     </div>
@@ -25,7 +28,7 @@ defineProps<{ workout: Workout }>()
     <div class="min-w-0 flex-1">
       <div class="flex items-baseline gap-2 text-sm">
         <span class="font-semibold text-slate-900">{{ timeLabel(workout.done_at) }}</span>
-        <span class="font-medium text-emerald-700">Entrenamiento</span>
+        <span class="font-medium text-blue-800">Entrenamiento</span>
       </div>
       <p class="mt-1 text-base leading-snug font-medium text-slate-800">
         {{ WORKOUT_LABEL[workout.kind] }}
