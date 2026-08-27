@@ -1,4 +1,4 @@
-// Tipos de la base. Escritos a mano porque el esquema es una sola tabla.
+// Tipos de la base. Escritos a mano porque el esquema son dos tablas.
 // Si crece, regeneralos con:
 //   npx supabase gen types typescript --project-id <ref> > shared/types/database.ts
 //
@@ -7,7 +7,11 @@
 // signature implicita a los type alias, no a las interfaces. Con `interface` el
 // cliente degrada a `never` y todos los .insert() dejan de tipar.
 
-export type MealCategory = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'snack' | 'otros'
+// ---------------------------------------------------------------------
+// Comidas
+// ---------------------------------------------------------------------
+
+export type MealCategory = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'snack' | 'postre'
 
 export type MealRow = {
   id: string
@@ -39,6 +43,36 @@ export type MealUpdate = {
   eaten_at?: string
 }
 
+// ---------------------------------------------------------------------
+// Entrenamientos
+// ---------------------------------------------------------------------
+
+export type WorkoutKind = 'gimnasio' | 'correr' | 'kinesiologia'
+
+export type WorkoutRow = {
+  id: string
+  user_id: string
+  kind: WorkoutKind
+  note: string | null
+  done_at: string
+  created_at: string
+  updated_at: string
+}
+
+export type WorkoutInsert = {
+  kind: WorkoutKind
+  note?: string | null
+  done_at?: string
+}
+
+export type WorkoutUpdate = {
+  kind?: WorkoutKind
+  note?: string | null
+  done_at?: string
+}
+
+// ---------------------------------------------------------------------
+
 export type Database = {
   public: {
     Tables: {
@@ -48,11 +82,18 @@ export type Database = {
         Update: MealUpdate
         Relationships: []
       }
+      workouts: {
+        Row: WorkoutRow
+        Insert: WorkoutInsert
+        Update: WorkoutUpdate
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
     Enums: {
       meal_category: MealCategory
+      workout_kind: WorkoutKind
     }
     CompositeTypes: Record<string, never>
   }
@@ -64,6 +105,9 @@ export type Meal = Pick<
   'id' | 'category' | 'description' | 'note' | 'photo_path' | 'eaten_at'
 >
 
+export type Workout = Pick<WorkoutRow, 'id' | 'kind' | 'note' | 'done_at'>
+
 export const MEAL_COLUMNS = 'id, category, description, note, photo_path, eaten_at' as const
+export const WORKOUT_COLUMNS = 'id, kind, note, done_at' as const
 
 export const PHOTO_BUCKET = 'meal-photos'

@@ -6,6 +6,10 @@ const MAP: Array<[RegExp, string]> = [
   [/password should be at least (\d+)/i, 'La contraseña tiene que tener al menos $1 caracteres.'],
   [/should be different from the old password/i, 'La contraseña nueva tiene que ser distinta de la anterior.'],
   [/rate limit|too many requests/i, 'Demasiados intentos seguidos. Esperá un minuto.'],
+  [
+    /reauthentication|nonce/i,
+    'Por seguridad hay que volver a entrar antes de cambiar la contraseña. Cerrá sesión y entrá de nuevo.',
+  ],
   [/unable to validate email|invalid email/i, 'Ese email no es válido.'],
   [/token has expired|invalid or has expired|otp_expired/i, 'El link venció. Pedí uno nuevo.'],
   [/signups not allowed|signup is disabled/i, 'El registro está cerrado en este proyecto.'],

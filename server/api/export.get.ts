@@ -1,8 +1,8 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import { buildMealsPdf, type PdfMeal } from '../utils/pdf'
+import { buildDiaryPdf, type PdfEntry } from '../utils/pdf'
 import { pool } from '../utils/pool'
-import { MEAL_COLUMNS, PHOTO_BUCKET } from '#shared/types/database'
-import type { Database, Meal } from '#shared/types/database'
+import { MEAL_COLUMNS, PHOTO_BUCKET, WORKOUT_COLUMNS } from '#shared/types/database'
+import type { Database, Meal, Workout } from '#shared/types/database'
 import { dayKey } from '#shared/utils/dates'
 import { displayName } from '#shared/utils/profile'
 
@@ -53,27 +53,41 @@ export default defineEventHandler(async (event) => {
 
   const client = await serverSupabaseClient<Database>(event)
 
-  const { data, error } = await client
-    .from('meals')
-    .select(MEAL_COLUMNS)
-    // Redundante con RLS a proposito: user.id sale de la sesion del servidor,
-    // nunca del request. Si alguna vez alguien afloja una policy, esto aguanta.
-    .eq('user_id', user.id)
-    .gte('eaten_at', new Date(from).toISOString())
-    .lte('eaten_at', new Date(to).toISOString())
-    .order('eaten_at', { ascending: true })
-    .limit(MAX_ROWS)
+  // Las dos consultas llevan `.eq('user_id', user.id)` redundante con RLS a
+  // proposito: user.id sale de la sesion del servidor, nunca del request. Si
+  // alguna vez alguien afloja una policy, esto aguanta.
+  const [mealsRes, workoutsRes] = await Promise.all([
+    client
+      .from('meals')
+      .select(MEAL_COLUMNS)
+      .eq('user_id', user.id)
+      .gte('eaten_at', new Date(from).toISOString())
+      .lte('eaten_at', new Date(to).toISOString())
+      .order('eaten_at', { ascending: true })
+      .limit(MAX_ROWS),
+    client
+      .from('workouts')
+      .select(WORKOUT_COLUMNS)
+      .eq('user_id', user.id)
+      .gte('done_at', new Date(from).toISOString())
+      .lte('done_at', new Date(to).toISOString())
+      .order('done_at', { ascending: true })
+      .limit(MAX_ROWS),
+  ])
 
-  if (error) {
+  const failed = mealsRes.error ?? workoutsRes.error
+  if (failed) {
     throw createError({
       statusCode: 500,
       statusMessage: 'Error consultando los registros',
-      data: { message: error.message },
+      data: { message: failed.message },
     })
   }
 
-  const rows = (data ?? []) as Meal[]
-  if (!rows.length) {
+  const rows = (mealsRes.data ?? []) as Meal[]
+  const workoutRows = (workoutsRes.data ?? []) as Workout[]
+
+  if (!rows.length && !workoutRows.length) {
     throw createError({
       statusCode: 404,
       statusMessage: 'Sin registros',
@@ -92,20 +106,34 @@ export default defineEventHandler(async (event) => {
     photos.set(row.id, new Uint8Array(await blob.arrayBuffer()))
   })
 
-  const meals: PdfMeal[] = rows.map((row) => ({
-    id: row.id,
-    category: row.category,
-    description: row.description,
-    note: row.note,
-    eaten_at: row.eaten_at,
-    photo: photos.get(row.id) ?? null,
-  }))
+  const entries: PdfEntry[] = [
+    ...rows.map(
+      (row): PdfEntry => ({
+        kind: 'meal',
+        id: row.id,
+        category: row.category,
+        description: row.description,
+        note: row.note,
+        at: row.eaten_at,
+        photo: photos.get(row.id) ?? null,
+      }),
+    ),
+    ...workoutRows.map(
+      (row): PdfEntry => ({
+        kind: 'workout',
+        id: row.id,
+        workoutKind: row.kind,
+        note: row.note,
+        at: row.done_at,
+      }),
+    ),
+  ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
 
   const fromKey = dayKey(new Date(from), timeZone)
   const toKey = dayKey(new Date(to), timeZone)
 
-  const pdf = await buildMealsPdf({
-    meals,
+  const pdf = await buildDiaryPdf({
+    entries,
     timeZone,
     fromKey,
     toKey,

@@ -1,6 +1,7 @@
 # Diario de comidas
 
-App web para anotar qué se come, cuándo, con una foto y una nota. Nada más: no cuenta calorías,
+App web para anotar qué se come, cuándo, con una foto y una nota, y los entrenamientos que
+hacés en el medio. Nada más: no cuenta calorías,
 no calcula macros, no puntúa nada ni clasifica la comida en buena o mala. Es un registro
 descriptivo — el análisis lo hace una persona, no la app.
 
@@ -15,15 +16,19 @@ contraseña, y ve únicamente lo suyo.
 
 ## Qué hace
 
-- **Registro de comidas.** Categoría (desayuno, almuerzo, merienda, cena, snack u otros), qué
+- **Registro de comidas.** Categoría (desayuno, almuerzo, merienda, cena, snack o postre), qué
   comiste en texto libre, foto opcional y nota opcional. La fecha y la hora se capturan solas al
   crear el registro, pero se pueden editar si cargás algo más tarde.
-- **Vista principal** agrupada por día, el más reciente arriba, con la foto en miniatura.
+- **Registro de entrenamientos.** Gimnasio, correr o kinesiología, con fecha, hora y nota
+  opcional.
+- **Vista principal** agrupada por día, el más reciente arriba, con la foto en miniatura. Las
+  comidas y los entrenamientos van en la misma línea de tiempo, pero se distinguen de un vistazo.
+- **Mi perfil.** Ver y editar nombre y apellido, cambiar la contraseña y cerrar sesión.
 - **Alta en el mínimo de pasos.** La categoría viene sugerida según la hora; la nota y la fecha
   arrancan plegadas; el botón de guardar queda fijo en la zona del pulgar.
 - **Edición y borrado** de cualquier registro ya cargado.
-- **Foto desde la cámara o desde la galería**, comprimida en el navegador antes de subir para que
-  no tarde con mala conexión.
+- **Foto desde la galería o sacada en el momento**, comprimida en el navegador antes de subir
+  para que no tarde con mala conexión.
 - **Export a PDF** de un rango de fechas, agrupado por día, con las fotos embebidas y a nombre de
   la persona.
 - **Se instala como app.** Es una PWA: desde el teléfono se agrega a la pantalla de inicio y abre
@@ -33,8 +38,8 @@ contraseña, y ve únicamente lo suyo.
 
 Lo hace cumplir la base de datos, no el frontend.
 
-- RLS en la tabla `meals` con policies por `auth.uid()`, y policies equivalentes en el bucket de
-  Storage, que es privado.
+- RLS en las tablas `meals` y `workouts` con policies por `auth.uid()`, y policies equivalentes
+  en el bucket de Storage, que es privado.
 - El `user_id` nunca sale del cliente: la columna tiene `default auth.uid()` y la app
   directamente no lo manda. Si alguien lo mandara igual, el `with check` de la policy lo rechaza.
 - El `photo_path` está atado al dueño: tiene que empezar con `<auth.uid()>/`. Aunque alguien
@@ -55,6 +60,17 @@ Nuxt 4 con TypeScript, Tailwind 4, Supabase (Auth, Postgres, Storage) y `pdf-lib
 dependencias.
 
 ## Las decisiones que condicionan el resto
+
+**Los entrenamientos van en su propia tabla, no en una columna `tipo` de `meals`.** Una comida
+tiene descripción obligatoria y foto; un entrenamiento no tiene ninguna de las dos. Meterlos en
+la misma tabla obliga a que la mitad de las columnas sean nulas y a que cada consulta filtre por
+tipo. Separadas, cada una tiene sus propias constraints y el listado del día las mezcla en el
+cliente, que es donde ese orden hace falta.
+
+**El verde de los entrenamientos es el único color de la app además del rojo de error.** En el
+listado de un día hay que poder saltear los entrenamientos cuando estás leyendo lo que comiste,
+y al revés. Con una diferencia solo de forma (sin foto, con ícono) hay que frenarse a leer cada
+tarjeta; con el fondo verde se resuelve de un vistazo.
 
 **El nombre y el apellido van en el `user_metadata` de Auth, no en una tabla propia.** Se piden
 en el alta, se escriben una sola vez y viajan en el JWT: los lee el browser y también el endpoint
@@ -96,9 +112,11 @@ tipar sin decir por qué.
 
 ```
 app/
-  pages/           index, nueva, comida/[id], exportar + las de auth
-  components/      MealForm, MealCard, CategoryPicker, PhotoField, AppHeader
-  composables/     useMeals: CRUD, Storage y URLs firmadas · useProfile: nombre de la sesión
+  pages/           index, nueva, comida/[id], entrenamiento/*, exportar, perfil + las de auth
+  components/      MealForm/MealCard/CategoryPicker, WorkoutForm/WorkoutCard/KindPicker,
+                   PhotoField, AppHeader
+  composables/     useMeals: CRUD, Storage y URLs firmadas · useWorkouts: CRUD
+                   useProfile: nombre de la sesión
   plugins/         pwa.client: registra el service worker
   utils/           compresión de imágenes, mensajes de error
 shared/            código que comparten app y servidor: tipos, categorías, fechas, nombres
@@ -106,7 +124,7 @@ public/            manifest, service worker, página de sin conexión e iconos
 server/
   api/export.get.ts    genera el PDF, autenticado del lado del servidor
   utils/pdf.ts         armado con pdf-lib
-supabase/migrations/   el esquema: tabla, índice, trigger, RLS y bucket
+supabase/migrations/   el esquema: tablas, índices, triggers, RLS y bucket
 scripts/               verificación de aislamiento
 ```
 
@@ -136,9 +154,8 @@ con muchas fotos el request puede tardar entre 5 y 20 segundos. `nuxt.config.ts`
 
 ## Los iconos
 
-Los que están en `public/` son un placeholder (un plato blanco sobre `slate-900`) para que la app
-sea instalable desde el día uno. Para reemplazarlos alcanza con pisar los archivos con el mismo
-nombre — el manifest ya apunta a todos:
+Para cambiarlos alcanza con pisar los archivos con el mismo nombre: el manifest y el `<head>` ya
+apuntan a todos. Esto es lo que espera cada uno:
 
 | Archivo | Tamaño | Notas |
 |---|---|---|
@@ -146,10 +163,12 @@ nombre — el manifest ya apunta a todos:
 | `icon-512.png` | 512×512 | Splash de Android y tiendas de PWA |
 | `icon-maskable-512.png` | 512×512 | El dibujo tiene que entrar en el 80% central: Android lo recorta en círculo, gota o cuadrado según el launcher |
 | `apple-touch-icon.png` | 180×180 | iOS ignora el manifest y usa solo este. Sin transparencia y sin esquinas redondeadas: las redondea el sistema |
-| `favicon.ico` | 32×32 | La pestaña del navegador |
+| `favicon.ico` | 16×16 y 32×32 | La pestaña del navegador. Lleva los dos tamaños adentro del mismo `.ico` |
 | `icon.svg` | vectorial | Favicon en alta resolución y archivo maestro |
 
-Todos van sin transparencia: si el PNG tiene alfa, iOS lo rellena de negro.
+Todos van sin transparencia: si el PNG tiene alfa, iOS lo rellena de negro. Y todos tienen que
+ser exactamente cuadrados — si el archivo mide 513×512 y el manifest declara `512x512`, Chrome
+puede descartar el icono y dejar de ofrecer la instalación.
 
 El service worker solo se registra en producción (`npm run build && npm run preview`); en dev
 está apagado para que no tape los cambios. Para probar la instalación hace falta HTTPS, salvo en

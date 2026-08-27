@@ -1,21 +1,35 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import type { PDFFont, PDFImage, PDFPage } from 'pdf-lib'
 import { CATEGORY_LABEL } from '#shared/utils/categories'
+import { WORKOUT_LABEL } from '#shared/utils/workouts'
 import { dayKey, longDayLabel, monthDayLabel, timeLabel } from '#shared/utils/dates'
-import type { MealCategory } from '#shared/types/database'
+import type { MealCategory, WorkoutKind } from '#shared/types/database'
 
 export interface PdfMeal {
+  kind: 'meal'
   id: string
   category: MealCategory
   description: string
   note: string | null
-  eaten_at: string
+  /** Momento del registro. Se llama igual en los dos para poder ordenarlos juntos. */
+  at: string
   /** Bytes de la foto ya bajados de Storage. */
   photo: Uint8Array | null
 }
 
+export interface PdfWorkout {
+  kind: 'workout'
+  id: string
+  workoutKind: WorkoutKind
+  note: string | null
+  at: string
+}
+
+export type PdfEntry = PdfMeal | PdfWorkout
+
 export interface PdfOptions {
-  meals: PdfMeal[]
+  /** Comidas y entrenamientos ya mezclados y ordenados por fecha ascendente. */
+  entries: PdfEntry[]
   /** Zona horaria del usuario: sin esto el servidor agruparia los dias en UTC. */
   timeZone: string
   fromKey: string
@@ -49,7 +63,7 @@ const MUTED = rgb(0.42, 0.45, 0.5)
 const RULE = rgb(0.83, 0.85, 0.88)
 
 interface Block {
-  meal: PdfMeal
+  entry: PdfEntry
   header: string
   descLines: string[]
   noteLines: string[]
@@ -60,7 +74,7 @@ interface Block {
   height: number
 }
 
-export async function buildMealsPdf(opts: PdfOptions): Promise<Uint8Array> {
+export async function buildDiaryPdf(opts: PdfOptions): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   doc.setTitle('Diario de comidas')
   doc.setSubject(`Registros del ${opts.fromKey} al ${opts.toKey}`)
@@ -73,10 +87,10 @@ export async function buildMealsPdf(opts: PdfOptions): Promise<Uint8Array> {
 
   // Las imagenes se embeben una sola vez, antes de paginar.
   const images = new Map<string, PDFImage>()
-  for (const meal of opts.meals) {
-    if (!meal.photo) continue
-    const image = await embedImage(doc, meal.photo)
-    if (image) images.set(meal.id, image)
+  for (const entry of opts.entries) {
+    if (entry.kind !== 'meal' || !entry.photo) continue
+    const image = await embedImage(doc, entry.photo)
+    if (image) images.set(entry.id, image)
   }
 
   const pages: PDFPage[] = []
@@ -90,16 +104,24 @@ export async function buildMealsPdf(opts: PdfOptions): Promise<Uint8Array> {
   }
 
   /** Mide un registro sin dibujarlo, para poder decidir el salto de pagina antes. */
-  function measure(meal: PdfMeal): Block {
-    const image = images.get(meal.id) ?? null
-    const missingPhoto = Boolean(meal.photo) && !image
+  function measure(entry: PdfEntry): Block {
+    const image = entry.kind === 'meal' ? (images.get(entry.id) ?? null) : null
+    const missingPhoto = entry.kind === 'meal' && Boolean(entry.photo) && !image
     const textW = image ? TEXT_W_WITH_PHOTO : CONTENT_W
 
-    const header = clean(
-      `${timeLabel(meal.eaten_at, opts.timeZone)}   ${CATEGORY_LABEL[meal.category]}`,
-    )
-    const descLines = wrap(clean(meal.description), font, SIZE_DESC, textW)
-    const noteLines = meal.note ? wrap(`Nota: ${clean(meal.note)}`, italic, SIZE_NOTE, textW) : []
+    const time = timeLabel(entry.at, opts.timeZone)
+    // El entrenamiento se marca en el encabezado del bloque: en una hoja en
+    // blanco y negro es lo unico que lo distingue de una comida.
+    const label =
+      entry.kind === 'meal'
+        ? CATEGORY_LABEL[entry.category]
+        : `ENTRENAMIENTO - ${WORKOUT_LABEL[entry.workoutKind]}`
+
+    const header = clean(`${time}   ${label}`)
+    // Un entrenamiento no tiene cuerpo: el encabezado ya dice todo lo que hay.
+    const descLines =
+      entry.kind === 'meal' ? wrap(clean(entry.description), font, SIZE_DESC, textW) : []
+    const noteLines = entry.note ? wrap(`Nota: ${clean(entry.note)}`, italic, SIZE_NOTE, textW) : []
 
     let textH = 10 + descLines.length * LH_DESC
     if (noteLines.length) textH += 4 + noteLines.length * LH_NOTE
@@ -115,7 +137,7 @@ export async function buildMealsPdf(opts: PdfOptions): Promise<Uint8Array> {
     }
 
     return {
-      meal,
+      entry,
       header,
       descLines,
       noteLines,
@@ -210,15 +232,15 @@ export async function buildMealsPdf(opts: PdfOptions): Promise<Uint8Array> {
       ? monthDayLabel(opts.fromKey)
       : `${monthDayLabel(opts.fromKey, !sameYear)} a ${monthDayLabel(opts.toKey)}`
   const subtitle = clean(
-    `${opts.ownerLabel}   ·   ${rangeLabel}   ·   ${opts.meals.length} ${
-      opts.meals.length === 1 ? 'registro' : 'registros'
+    `${opts.ownerLabel}   ·   ${rangeLabel}   ·   ${opts.entries.length} ${
+      opts.entries.length === 1 ? 'registro' : 'registros'
     }`,
   )
   page.drawText(subtitle, { x: MARGIN, y: y - 10, size: 9.5, font, color: MUTED })
   y -= 24
 
   // --- Dias -------------------------------------------------------------
-  for (const [key, items] of groupByDay(opts.meals, opts.timeZone)) {
+  for (const [key, items] of groupByDay(opts.entries, opts.timeZone)) {
     const blocks = items.map(measure)
 
     // Un titulo de dia no puede quedar solo al pie: reservamos el alto real
@@ -270,13 +292,13 @@ export async function buildMealsPdf(opts: PdfOptions): Promise<Uint8Array> {
 // Helpers
 // ----------------------------------------------------------------------
 
-function groupByDay(meals: PdfMeal[], timeZone: string): Array<[string, PdfMeal[]]> {
-  const map = new Map<string, PdfMeal[]>()
-  for (const meal of meals) {
-    const key = dayKey(meal.eaten_at, timeZone)
+function groupByDay(entries: PdfEntry[], timeZone: string): Array<[string, PdfEntry[]]> {
+  const map = new Map<string, PdfEntry[]>()
+  for (const entry of entries) {
+    const key = dayKey(entry.at, timeZone)
     const bucket = map.get(key)
-    if (bucket) bucket.push(meal)
-    else map.set(key, [meal])
+    if (bucket) bucket.push(entry)
+    else map.set(key, [entry])
   }
   return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
 }

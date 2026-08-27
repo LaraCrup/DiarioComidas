@@ -1,14 +1,12 @@
 <script setup lang="ts">
 /**
- * Dos inputs y no uno con el `capture` dinamico.
+ * Un solo input, sin `capture`.
  *
- * `capture="environment"` abre la camara trasera de una, sin pasar por el
- * selector: es lo que queres cuando estas parada frente al plato. Pero el
- * atributo tapa la galeria, y sacarlo y ponerlo antes de cada `.click()` es
- * fragil (Safari se queda con el estado anterior del input). Dos inputs
- * separados son cuatro lineas de HTML y andan siempre.
- *
- * En desktop los dos degradan al mismo selector de archivos.
+ * `capture="environment"` abria la camara de una y tapaba la galeria, asi que
+ * habia dos botones. Pero el selector de iOS ya ofrece "Sacar foto" adentro del
+ * mismo menu, o sea que el boton de camara era un atajo a algo que el sistema
+ * pregunta igual. Con uno solo se llega a las dos cosas y la pantalla queda
+ * mas limpia.
  */
 const props = defineProps<{
   /** URL firmada de la foto que ya estaba guardada. */
@@ -18,8 +16,7 @@ const props = defineProps<{
 const file = defineModel<File | null>('file', { required: true })
 const removed = defineModel<boolean>('removed', { required: true })
 
-const cameraInput = useTemplateRef<HTMLInputElement>('cameraInput')
-const galleryInput = useTemplateRef<HTMLInputElement>('galleryInput')
+const input = useTemplateRef<HTMLInputElement>('input')
 const localPreview = ref<string | null>(null)
 
 const preview = computed(() => {
@@ -29,8 +26,8 @@ const preview = computed(() => {
 })
 
 function onPick(e: Event) {
-  const input = e.target as HTMLInputElement
-  const picked = input.files?.[0] ?? null
+  const el = e.target as HTMLInputElement
+  const picked = el.files?.[0] ?? null
   // Cancelar el selector dispara change con files vacio: no pisamos lo que habia.
   if (!picked) return
   revoke()
@@ -38,15 +35,14 @@ function onPick(e: Event) {
   removed.value = false
   localPreview.value = URL.createObjectURL(picked)
   // Asi elegir dos veces la misma foto vuelve a disparar el change.
-  input.value = ''
+  el.value = ''
 }
 
 function clear() {
   revoke()
   file.value = null
   removed.value = true
-  if (cameraInput.value) cameraInput.value.value = ''
-  if (galleryInput.value) galleryInput.value.value = ''
+  if (input.value) input.value.value = ''
 }
 
 function revoke() {
@@ -60,18 +56,7 @@ onBeforeUnmount(revoke)
 <template>
   <div>
     <input
-      ref="cameraInput"
-      type="file"
-      accept="image/*"
-      capture="environment"
-      class="sr-only"
-      tabindex="-1"
-      aria-hidden="true"
-      @change="onPick"
-    />
-    <!-- Sin `capture`: abre la galeria (o Fotos en iOS). -->
-    <input
-      ref="galleryInput"
+      ref="input"
       type="file"
       accept="image/*"
       class="sr-only"
@@ -80,7 +65,6 @@ onBeforeUnmount(revoke)
       @change="onPick"
     />
 
-    <!-- Con foto: la sacamos del medio y dejamos las dos formas de reemplazarla -->
     <div v-if="preview">
       <div class="relative">
         <img
@@ -106,67 +90,7 @@ onBeforeUnmount(revoke)
         </button>
       </div>
 
-      <div class="mt-2 grid grid-cols-2 gap-2">
-        <button type="button" class="btn-secondary px-3" @click="cameraInput?.click()">
-          <svg
-            class="h-5 w-5 shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-          >
-            <path
-              d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.2a1 1 0 0 0 .83-.45l.94-1.4A1 1 0 0 1 9.3 3.7h5.4a1 1 0 0 1 .83.45l.94 1.4A1 1 0 0 0 17.3 6h1.2A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-9Z"
-            />
-            <circle cx="12" cy="13" r="3.4" />
-          </svg>
-          Sacar otra
-        </button>
-        <button type="button" class="btn-secondary px-3" @click="galleryInput?.click()">
-          <svg
-            class="h-5 w-5 shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-          >
-            <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
-            <circle cx="8.5" cy="9.5" r="1.6" />
-            <path d="m4 17 4.5-4.5a1.5 1.5 0 0 1 2.1 0L15 17" stroke-linecap="round" />
-            <path d="m13.5 14 2-2a1.5 1.5 0 0 1 2.1 0L20 14.5" stroke-linecap="round" />
-          </svg>
-          Galería
-        </button>
-      </div>
-    </div>
-
-    <!-- Sin foto: las dos opciones con el mismo peso -->
-    <div v-else class="grid grid-cols-2 gap-2">
-      <button
-        type="button"
-        class="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-3 text-base font-semibold text-slate-600 active:bg-slate-50"
-        @click="cameraInput?.click()"
-      >
-        <svg
-          class="h-5 w-5 shrink-0"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-        >
-          <path
-            d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.2a1 1 0 0 0 .83-.45l.94-1.4A1 1 0 0 1 9.3 3.7h5.4a1 1 0 0 1 .83.45l.94 1.4A1 1 0 0 0 17.3 6h1.2A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-9Z"
-          />
-          <circle cx="12" cy="13" r="3.4" />
-        </svg>
-        Sacar foto
-      </button>
-
-      <button
-        type="button"
-        class="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-3 text-base font-semibold text-slate-600 active:bg-slate-50"
-        @click="galleryInput?.click()"
-      >
+      <button type="button" class="btn-secondary mt-2 w-full" @click="input?.click()">
         <svg
           class="h-5 w-5 shrink-0"
           viewBox="0 0 24 24"
@@ -179,8 +103,29 @@ onBeforeUnmount(revoke)
           <path d="m4 17 4.5-4.5a1.5 1.5 0 0 1 2.1 0L15 17" stroke-linecap="round" />
           <path d="m13.5 14 2-2a1.5 1.5 0 0 1 2.1 0L20 14.5" stroke-linecap="round" />
         </svg>
-        Galería
+        Cambiar foto
       </button>
     </div>
+
+    <button
+      v-else
+      type="button"
+      class="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-3 text-base font-semibold text-slate-600 active:bg-slate-50"
+      @click="input?.click()"
+    >
+      <svg
+        class="h-5 w-5 shrink-0"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+      >
+        <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+        <circle cx="8.5" cy="9.5" r="1.6" />
+        <path d="m4 17 4.5-4.5a1.5 1.5 0 0 1 2.1 0L15 17" stroke-linecap="round" />
+        <path d="m13.5 14 2-2a1.5 1.5 0 0 1 2.1 0L20 14.5" stroke-linecap="round" />
+      </svg>
+      Agregar foto
+    </button>
   </div>
 </template>
