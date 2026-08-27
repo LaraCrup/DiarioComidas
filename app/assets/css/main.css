@@ -50,7 +50,6 @@
    * Las variantes comparten la base en un solo selector porque Tailwind v4 no
    * deja hacer @apply de una clase propia (solo de utilidades).
    */
-  .btn,
   .btn-primary,
   .btn-secondary,
   .btn-danger,

@@ -90,7 +90,7 @@ R=$(rest DELETE "meals?id=eq.$ID_B" "$TOKEN_A")
 [[ "$(body "$R")" == "[]" ]] && ok "A no puede BORRAR la fila de B" || bad "A borro la fila de B -> $(body "$R")"
 
 R=$(rest PATCH "meals?id=eq.$ID_A" "$TOKEN_A" "{\"user_id\":\"$UID_B\"}")
-OWNER=$(body "$R" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s)[0]?.user_id??"")}catch{console.log("")}})')
+OWNER=$(body "$R" | jget 0.user_id)
 [[ "$OWNER" != "$UID_B" ]] && ok "A no puede REGALARLE su fila a B" || bad "A le cambio el dueño a su fila"
 
 R=$(rest POST meals "$TOKEN_A" "{\"category\":\"cena\",\"description\":\"[test] path ajeno\",\"photo_path\":\"$UID_B/robada.jpg\"}")
