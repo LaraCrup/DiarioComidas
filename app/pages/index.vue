@@ -20,6 +20,28 @@ const urls = ref(new Map<string, string>())
 const pending = ref(true)
 const error = ref<string | null>(null)
 
+/**
+ * Filtro "cayó mal": deja solo las comidas marcadas y arriba muestra que
+ * ingredientes se repiten. Es la lectura para la que existe la marca: ver de
+ * un vistazo que le cae mal seguido.
+ */
+const onlyBad = ref(false)
+
+const visible = computed(() =>
+  onlyBad.value
+    ? entries.value.filter((e) => e.kind === 'meal' && e.meal.felt_bad)
+    : entries.value,
+)
+
+const ingredientCounts = computed(() => {
+  const counts = new Map<string, number>()
+  for (const e of entries.value) {
+    if (e.kind !== 'meal' || !e.meal.felt_bad) continue
+    for (const ing of e.meal.ingredients ?? []) counts.set(ing, (counts.get(ing) ?? 0) + 1)
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])
+})
+
 async function load() {
   pending.value = true
   error.value = null
@@ -52,7 +74,7 @@ onMounted(load)
  */
 const groups = computed(() => {
   const map = new Map<string, Entry[]>()
-  for (const e of entries.value) {
+  for (const e of visible.value) {
     const k = dayKey(e.at)
     const bucket = map.get(k)
     if (bucket) bucket.push(e)
@@ -71,6 +93,19 @@ const groups = computed(() => {
   <div class="flex min-h-dvh flex-col">
     <AppHeader title="Diario" :subtitle="displayName">
       <template #actions>
+        <button
+          type="button"
+          class="min-h-9 rounded-full border px-3 text-sm font-semibold transition-colors"
+          :class="
+            onlyBad
+              ? 'border-amber-500 bg-amber-100 text-amber-800'
+              : 'border-slate-300 bg-white text-slate-600'
+          "
+          :aria-pressed="onlyBad"
+          @click="onlyBad = !onlyBad"
+        >
+          Cayó mal
+        </button>
         <NuxtLink to="/exportar" class="btn-ghost px-3 text-sm" aria-label="Exportar a PDF">
           Exportar
         </NuxtLink>
@@ -113,8 +148,31 @@ const groups = computed(() => {
         </p>
       </div>
 
+      <!-- Filtro sin resultados -->
+      <div v-else-if="onlyBad && !visible.length" class="card mt-8 p-8 text-center">
+        <p class="text-base font-semibold text-slate-800">Ninguna comida te cayó mal</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Cuando cargues una, marcá el switch y anotá qué tenía.
+        </p>
+      </div>
+
       <!-- Lista -->
       <div v-else class="space-y-6">
+        <section v-if="onlyBad && ingredientCounts.length" class="card p-4">
+          <h2 class="text-sm font-bold tracking-wide text-slate-500 uppercase">
+            Lo que más se repite
+          </h2>
+          <ul class="mt-2 flex flex-wrap gap-2">
+            <li
+              v-for="[ing, n] in ingredientCounts"
+              :key="ing"
+              class="rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-800"
+            >
+              {{ ing }} <span class="font-semibold">×{{ n }}</span>
+            </li>
+          </ul>
+        </section>
+
         <section v-for="group in groups" :key="group.key">
           <h2 class="mb-2 text-sm font-bold tracking-wide text-slate-500 uppercase">
             {{ group.label }}

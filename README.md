@@ -19,6 +19,10 @@ contraseña, y ve únicamente lo suyo.
 - **Registro de comidas.** Categoría (desayuno, almuerzo, merienda, cena, snack o postre), qué
   comiste en texto libre, foto opcional y nota opcional. La fecha y la hora se capturan solas al
   crear el registro, pero se pueden editar si cargás algo más tarde.
+- **"Me cayó mal".** Un switch en cada comida. Al prenderlo aparece un campo para anotar qué
+  tenía (ingredientes, separados por coma). En el diario, el filtro "Cayó mal" deja solo esas
+  comidas y arriba muestra qué ingredientes se repiten más. Es para que, con el tiempo, se vea
+  qué le cae mal seguido a la persona. La app no sugiere ni concluye nada: cuenta.
 - **Registro de entrenamientos.** Gimnasio, correr o kinesiología, con fecha, hora y nota
   opcional.
 - **Vista principal** agrupada por día, el más reciente arriba, con la foto en miniatura. Las
@@ -76,7 +80,14 @@ porque el fondo de la pantalla ya es `slate-100` —un azul grisáceo— y contr
 se distingue.
 
 Con eso, todo el color de la app quiere decir algo: rojo es error o borrado, verde es "salió
-bien" y azul es entrenamiento. El resto es la escala `slate`.
+bien", azul es entrenamiento y ámbar es "cayó mal". El resto es la escala `slate`.
+
+**Los ingredientes van como `text[]` en `meals`, no como texto libre ni en una tabla aparte.**
+La única lectura que tienen es "cuáles se repiten", y eso con un array es un `unnest` + `count`
+sin parsear nada; una tabla `ingredients` con su join y su RLS sería más esquema para la misma
+consulta. Se guardan en minúsculas y sin repetidos para que "Cebolla" y "cebolla" cuenten como lo
+mismo. Un `check` garantiza que solo haya ingredientes cuando `felt_bad` es true: la marca es la
+que da sentido a la lista.
 
 **El nombre y el apellido van en el `user_metadata` de Auth, no en una tabla propia.** Se piden
 en el alta, se escriben una sola vez y viajan en el JWT: los lee el browser y también el endpoint
