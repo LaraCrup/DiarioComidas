@@ -18,6 +18,9 @@ const emit = defineEmits<{ submit: [payload: MealPayload] }>()
 const category = ref<MealCategory>(props.meal?.category ?? suggestCategory())
 const description = ref(props.meal?.description ?? '')
 const note = ref(props.meal?.note ?? '')
+const feltBad = ref(props.meal?.felt_bad ?? false)
+// Se escriben separados por coma; al guardar se parten en un array.
+const ingredients = ref(props.meal?.ingredients?.join(', ') ?? '')
 const when = ref(toDatetimeLocal(props.meal?.eaten_at ?? new Date()))
 
 const photoFile = ref<File | null>(null)
@@ -72,10 +75,26 @@ function onSubmit() {
     category: category.value,
     description: description.value,
     note: note.value,
+    felt_bad: feltBad.value,
+    ingredients: feltBad.value ? parseIngredients(ingredients.value) : null,
     eaten_at,
     photoFile: photoFile.value,
     removePhoto: photoRemoved.value,
   })
+}
+
+/**
+ * "Lácteos, cebolla,  gluten" -> ['lácteos', 'cebolla', 'gluten'].
+ * En minusculas y sin repetidos: la gracia es contar despues cuales se
+ * repiten, y "Cebolla" y "cebolla" tienen que ser lo mismo.
+ */
+function parseIngredients(raw: string): string[] | null {
+  const items = raw
+    .split(/[,\n]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+  const unique = [...new Set(items)]
+  return unique.length ? unique : null
 }
 </script>
 
@@ -108,6 +127,44 @@ function onSubmit() {
         v-model:removed="photoRemoved"
         :existing-url="photoUrl"
       />
+
+      <!-- Me cayo mal -->
+      <div class="card p-4">
+        <button
+          type="button"
+          role="switch"
+          :aria-checked="feltBad"
+          class="flex w-full items-center justify-between gap-3"
+          @click="feltBad = !feltBad"
+        >
+          <span class="text-base font-semibold text-slate-800">Me cayó mal</span>
+          <span
+            class="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+            :class="feltBad ? 'bg-amber-500' : 'bg-slate-300'"
+          >
+            <span
+              class="absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform"
+              :class="feltBad && 'translate-x-5'"
+            />
+          </span>
+        </button>
+        <div v-if="feltBad" class="mt-4">
+          <label class="label" for="ingredients">Qué tenía</label>
+          <input
+            id="ingredients"
+            v-model="ingredients"
+            type="text"
+            class="field"
+            autocapitalize="none"
+            autocomplete="off"
+            enterkeyhint="done"
+            placeholder="Lácteos, cebolla, gluten"
+          />
+          <p class="mt-2 text-sm text-slate-500">
+            Separados por coma. Después se cuentan cuáles se repiten.
+          </p>
+        </div>
+      </div>
 
       <!-- Nota -->
       <div>

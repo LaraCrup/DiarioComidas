@@ -11,6 +11,8 @@ export interface PdfMeal {
   category: MealCategory
   description: string
   note: string | null
+  feltBad: boolean
+  ingredients: string[] | null
   /** Momento del registro. Se llama igual en los dos para poder ordenarlos juntos. */
   at: string
   /** Bytes de la foto ya bajados de Storage. */
@@ -66,6 +68,7 @@ interface Block {
   entry: PdfEntry
   header: string
   descLines: string[]
+  badLines: string[]
   noteLines: string[]
   missingPhoto: boolean
   image: PDFImage | null
@@ -121,9 +124,25 @@ export async function buildDiaryPdf(opts: PdfOptions): Promise<Uint8Array> {
     // Un entrenamiento no tiene cuerpo: el encabezado ya dice todo lo que hay.
     const descLines =
       entry.kind === 'meal' ? wrap(clean(entry.description), font, SIZE_DESC, textW) : []
+    // "Cayo mal" va en negrita y antes de la nota: es lo que se busca al
+    // repasar el PDF con el medico.
+    const badLines =
+      entry.kind === 'meal' && entry.feltBad
+        ? wrap(
+            clean(
+              entry.ingredients?.length
+                ? `Cayó mal: ${entry.ingredients.join(', ')}`
+                : 'Cayó mal',
+            ),
+            bold,
+            SIZE_NOTE,
+            textW,
+          )
+        : []
     const noteLines = entry.note ? wrap(`Nota: ${clean(entry.note)}`, italic, SIZE_NOTE, textW) : []
 
     let textH = 10 + descLines.length * LH_DESC
+    if (badLines.length) textH += 4 + badLines.length * LH_NOTE
     if (noteLines.length) textH += 4 + noteLines.length * LH_NOTE
     if (missingPhoto) textH += 4 + LH_NOTE
     textH += 3
@@ -140,6 +159,7 @@ export async function buildDiaryPdf(opts: PdfOptions): Promise<Uint8Array> {
       entry,
       header,
       descLines,
+      badLines,
       noteLines,
       missingPhoto,
       image,
@@ -188,6 +208,14 @@ export async function buildDiaryPdf(opts: PdfOptions): Promise<Uint8Array> {
     for (const line of block.descLines) {
       baseline -= LH_DESC
       page.drawText(line, { x: MARGIN, y: baseline, size: SIZE_DESC, font, color: INK })
+    }
+
+    if (block.badLines.length) {
+      baseline -= 4
+      for (const line of block.badLines) {
+        baseline -= LH_NOTE
+        page.drawText(line, { x: MARGIN, y: baseline, size: SIZE_NOTE, font: bold, color: INK })
+      }
     }
 
     if (block.noteLines.length) {

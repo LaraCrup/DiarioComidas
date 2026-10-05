@@ -20,6 +20,8 @@ export type MealRow = {
   description: string
   note: string | null
   photo_path: string | null
+  felt_bad: boolean
+  ingredients: string[] | null
   eaten_at: string
   created_at: string
   updated_at: string
@@ -32,6 +34,8 @@ export type MealInsert = {
   description: string
   note?: string | null
   photo_path?: string | null
+  felt_bad?: boolean
+  ingredients?: string[] | null
   eaten_at?: string
 }
 
@@ -40,6 +44,8 @@ export type MealUpdate = {
   description?: string
   note?: string | null
   photo_path?: string | null
+  felt_bad?: boolean
+  ingredients?: string[] | null
   eaten_at?: string
 }
 
@@ -102,12 +108,13 @@ export type Database = {
 /** Lo que realmente pinta la UI y el PDF. */
 export type Meal = Pick<
   MealRow,
-  'id' | 'category' | 'description' | 'note' | 'photo_path' | 'eaten_at'
+  'id' | 'category' | 'description' | 'note' | 'photo_path' | 'felt_bad' | 'ingredients' | 'eaten_at'
 >
 
 export type Workout = Pick<WorkoutRow, 'id' | 'kind' | 'note' | 'done_at'>
 
-export const MEAL_COLUMNS = 'id, category, description, note, photo_path, eaten_at' as const
+export const MEAL_COLUMNS =
+  'id, category, description, note, photo_path, felt_bad, ingredients, eaten_at' as const
 export const WORKOUT_COLUMNS = 'id, kind, note, done_at' as const
 
 export const PHOTO_BUCKET = 'meal-photos'

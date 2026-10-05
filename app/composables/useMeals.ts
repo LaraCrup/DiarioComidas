@@ -6,6 +6,9 @@ export interface MealPayload {
   category: MealCategory
   description: string
   note: string | null
+  felt_bad: boolean
+  /** Ingredientes sospechosos. Solo viaja si felt_bad; si no, va null. */
+  ingredients: string[] | null
   eaten_at: string
   /** Foto nueva elegida en el formulario (todavia sin subir). */
   photoFile: File | null
@@ -54,6 +57,8 @@ export function useMeals() {
           description: payload.description.trim(),
           note: emptyToNull(payload.note),
           photo_path,
+          felt_bad: payload.felt_bad,
+          ingredients: payload.felt_bad ? payload.ingredients : null,
           eaten_at: payload.eaten_at,
         })
         .select('id')
@@ -86,6 +91,8 @@ export function useMeals() {
         description: payload.description.trim(),
         note: emptyToNull(payload.note),
         photo_path,
+        felt_bad: payload.felt_bad,
+        ingredients: payload.felt_bad ? payload.ingredients : null,
         eaten_at: payload.eaten_at,
       })
       .eq('id', id)

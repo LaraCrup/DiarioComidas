@@ -114,6 +114,8 @@ export default defineEventHandler(async (event) => {
         category: row.category,
         description: row.description,
         note: row.note,
+        feltBad: row.felt_bad,
+        ingredients: row.ingredients,
         at: row.eaten_at,
         photo: photos.get(row.id) ?? null,
       }),

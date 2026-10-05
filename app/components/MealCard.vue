@@ -23,6 +23,10 @@ defineProps<{
       <p class="mt-1 text-base leading-snug break-words whitespace-pre-line text-slate-800">
         {{ meal.description }}
       </p>
+      <p v-if="meal.felt_bad" class="mt-1.5 text-sm leading-snug text-amber-700">
+        <span class="font-semibold">Cayó mal</span>
+        <span v-if="meal.ingredients?.length"> · {{ meal.ingredients.join(', ') }}</span>
+      </p>
       <p
         v-if="meal.note"
         class="mt-1.5 line-clamp-2 text-sm leading-snug break-words text-slate-500 italic"
